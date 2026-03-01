@@ -59,3 +59,4 @@ build/
 
 /logs/
 .migrate-copilot/
+.github/java-upgrade/

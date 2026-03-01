@@ -1,271 +1,595 @@
-# Asset Manager
+# Java Application Modernization with GitHub Copilot
 
-This document serves as a comprehensive workshop guide that will walk you through the process of migrating a Java application to Azure using GitHub Copilot app modernization. The workshop covers assessment, Java/framework upgrades, migration to Azure services, containerization, and deployment.
+[![Java](https://img.shields.io/badge/Java-8→21-orange.svg)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7→3.3-6DB33F.svg)](https://spring.io/projects/spring-boot)
+[![Azure](https://img.shields.io/badge/Azure-Cloud%20Native-0078D4.svg)](https://azure.microsoft.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**What the modernization Process Will Do:**
-The modernization will transform your application from the outdated technologies to a modern Azure-native solution. This includes upgrading from Java 8 to Java 21, migrating from Spring Boot 2.x to 3.x, replacing AWS S3 with Azure Blob Storage, switching from RabbitMQ to Azure Service Bus, migrating to Azure Database for PostgreSQL, implementing managed identity authentication, adding health checks, containerizing the applications, and preparing them for cloud deployment with proper monitoring.
+This repository demonstrates **end-to-end Java application modernization** using **GitHub Copilot App Modernization** extension. It showcases a complete journey from a legacy Java 8 / Spring Boot 2.7 application with AWS dependencies to a modern, containerized, cloud-native application running on Azure.
 
-## Table of Contents
+## 📖 Table of Contents
 
 - [Overview](#overview)
-- [Current Architecture](#current-architecture)
-- [Run Locally](#run-locally)
-- [App Modernization](#app-modernization)
-  - [Install GitHub Copilot app modernization](#install-github-copilot-app-modernization)
-  - [Assess Your Java Application](#assess-your-java-application)
-  - [Upgrade Runtime & Frameworks](#upgrade-runtime--frameworks)
-  - [Migrate to Azure Database for PostgreSQL Flexible Server using Predefined Tasks](#migrate-to-azure-database-for-postgresql-flexible-server-using-predefined-tasks)
-  - [Migrate to Azure Blob Storage using Predefined Tasks](#migrate-to-azure-blob-storage-using-predefined-tasks)
-  - [Migrate to Azure Service Bus using Predefined Tasks](#migrate-to-azure-service-bus-using-predefined-tasks)
-  - [Expose health endpoints using Custom Tasks](#expose-health-endpoints-using-custom-tasks)
-  - [Containerize Applications](#containerize-applications)
-  - [Deploy to Azure](#deploy-to-azure)
+- [About Assets Manager](#about-assets-manager)
+- [Architecture Evolution](#architecture-evolution)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Solution Structure](#solution-structure)
+- [Branch Structure](#branch-structure)
+- [Modernization Guide](#modernization-guide)
+- [Contributing](#contributing)
 
-## Overview
+---
 
-The [main](https://github.com/microsoft/ghcp-java-app-moderization-sample/tree/main) branch of the asset-manager project is the original state before being migrated to Azure services. It is organized as follows:
-* AWS S3 for image storage, using password-based authentication (access key/secret key)
-* RabbitMQ for message queuing, using password-based authentication
-* PostgreSQL database for metadata storage, using password-based authentication
+## 🎯 Overview
 
-In this workshop, you will use the **GitHub Copilot app modernization** extension to assess, upgrade, migrate, and finally deploy the project to Azure. There are 3 branches we have prepared for you in case you have any problems with any steps in this workshop:
-* [main](https://github.com/microsoft/ghcp-java-app-moderization-sample/tree/main): The original state of the asset-manager application.
+This repository serves as a **hands-on sample** for modernizing legacy Java applications using AI-powered tools. The `main` branch contains the original legacy codebase, and each subsequent branch represents a stage in the modernization process, driven by GitHub Copilot.
 
-## Current Architecture
-```mermaid
-flowchart TD
+### Modernization Workflow Stages
 
-%% Applications
-WebApp[Web Application]
-Worker[Worker Service]
-
-%% Storage Components
-S3[(AWS S3)]
-LocalFS[("Local File System<br/>dev only")]
-
-%% Message Broker
-RabbitMQ(RabbitMQ)
-
-%% Database
-PostgreSQL[(PostgreSQL)]
-
-%% Queues
-Queue[image-processing queue]
-RetryQueue[image-processing.retry queue]
-
-%% User
-User([User])
-
-%% User Flow
-User -->|Upload Image| WebApp
-User -->|View Images| WebApp
-
-%% Web App Flows
-WebApp -->|Store Original Image| S3
-WebApp -->|Store Original Image| LocalFS
-WebApp -->|Send Processing Message| RabbitMQ
-WebApp -->|Store Metadata| PostgreSQL
-WebApp -->|Retrieve Images| S3
-WebApp -->|Retrieve Images| LocalFS
-WebApp -->|Retrieve Metadata| PostgreSQL
-
-%% RabbitMQ Flow
-RabbitMQ -->|Push Message| Queue
-Queue -->|Processing Failed| RetryQueue
-RetryQueue -->|After 1 min delay| Queue
-Queue -->|Consume Message| Worker
-
-%% Worker Flow
-Worker -->|Download Original| S3
-Worker -->|Download Original| LocalFS
-Worker -->|Upload Thumbnail| S3
-Worker -->|Upload Thumbnail| LocalFS
-Worker -->|Store Metadata| PostgreSQL
-Worker -->|Retrieve Metadata| PostgreSQL
-
-%% Styling
-classDef app fill:#90caf9,stroke:#0d47a1,color:#0d47a1
-classDef storage fill:#a5d6a7,stroke:#1b5e20,color:#1b5e20
-classDef broker fill:#ffcc80,stroke:#e65100,color:#e65100
-classDef db fill:#ce93d8,stroke:#4a148c,color:#4a148c
-classDef queue fill:#fff59d,stroke:#f57f17,color:#f57f17
-classDef user fill:#ef9a9a,stroke:#b71c1c,color:#b71c1c
-
-class WebApp,Worker app
-class S3,LocalFS storage
-class RabbitMQ broker
-class PostgreSQL db
-class Queue,RetryQueue queue
-class User user
 ```
-Password-based authentication
+Assess → Upgrade → Unit Tests → CVE Check → Cloud Migration Readiness → Containerize → Deploy
+```
 
-## Run Locally
+Each branch demonstrates:
+- ✅ Specific modernization tasks completed
+- 📝 Code changes and refactoring
+- 🔧 Configuration updates
+- 📚 Documentation and lessons learned
 
-Clone the repository and open the asset-manager folder to run the current project locally:
+---
+
+## 🏗️ About Assets Manager
+
+**Assets Manager** is a file management application that showcases common patterns found in enterprise Java applications. It's an ideal candidate for modernization as it contains:
+
+- Multi-module Maven project structure
+- AWS SDK dependencies (S3 storage)
+- Older Java and Spring Boot versions
+- Message-driven processing with RabbitMQ
+- Relational data access with Spring Data JPA
+
+### Current State (Legacy — `main` branch)
+
+| Component | Technology |
+|-----------|------------|
+| **Language** | Java 8 |
+| **Framework** | Spring Boot 2.7.18 |
+| **Build Tool** | Maven 3.x |
+| **ORM** | Spring Data JPA / Hibernate |
+| **Messaging** | RabbitMQ via Spring AMQP |
+| **File Storage** | AWS S3 |
+| **Database** | PostgreSQL |
+| **Hosting** | Local / bare-metal |
+
+### Target State (Modernized)
+
+| Component | Technology |
+|-----------|------------|
+| **Language** | Java 21 |
+| **Framework** | Spring Boot 3.3.7 |
+| **Build Tool** | Maven 3.x |
+| **ORM** | Spring Data JPA / Hibernate (Jakarta EE) |
+| **Messaging** | RabbitMQ via Spring AMQP |
+| **File Storage** | Azure Blob Storage |
+| **Database** | PostgreSQL |
+| **Hosting** | Azure Container Apps |
+| **Containerization** | Docker (multi-stage builds) |
+
+---
+
+## 🚀 Architecture Evolution
+
+### Legacy Architecture (main)
+
+```
+User → Web App (HTTP/8080) → AWS S3 (file upload)
+                            → RabbitMQ (publish message)
+                            → PostgreSQL (metadata)
+
+RabbitMQ → Worker App → AWS S3 (download/upload thumbnail)
+                      → PostgreSQL (update metadata)
+```
+
+### Modernized Architecture (containerized_app)
+
+```
+User → Web App (HTTP/8080) → Azure Blob Storage (file upload, Managed Identity)
+                            → RabbitMQ (publish message)
+                            → PostgreSQL (metadata)
+
+RabbitMQ → Worker App → Azure Blob Storage (download/upload thumbnail)
+                      → PostgreSQL (update metadata)
+```
+
+### Core Functionality
+
+- 📤 **File Upload**: Upload images through a web UI
+- 🖼️ **Thumbnail Generation**: Automatic background processing via message queue
+- 📋 **Image Metadata**: Track uploaded files and their processing status
+- 🔍 **File Browsing**: View and manage uploaded assets
+
+---
+
+## ✅ Prerequisites
+
+### For Running the Legacy Application (main branch)
+
+- **JDK 8** (or use the provided dev container — see [DEV-SETUP.md](DEV-SETUP.md))
+- **Maven 3.x**
+- **PostgreSQL 16**
+- **RabbitMQ 3.x**
+- **AWS credentials** (for S3 storage) or use `dev` profile for local file storage
+
+### For Modernization (working with branches)
+
+- **IDE**:
+  - Visual Studio Code with Java Extension Pack and GitHub Copilot
+  - OR IntelliJ IDEA with GitHub Copilot plugin
+- **JDK 21** (or use the dev container)
+- **Docker Desktop** (for containerization stages)
+- **Azure Account** (for cloud deployment)
+- **Azure CLI** and **Azure Developer CLI (azd)** (for Azure deployment)
+- **Git**
+
+### Dev Container (Recommended)
+
+The easiest way to get started is with the included dev container, which provides all dependencies automatically. See [DEV-SETUP.md](DEV-SETUP.md) for setup instructions.
+
+---
+
+## 🏃 Getting Started
+
+### Running the Legacy Application
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/sitoader/ghcp-java-app-moderization-sample.git
+   cd ghcp-java-app-moderization-sample
+   ```
+
+2. **Open in a dev container** (recommended)
+   - VS Code: Command Palette → *Dev Containers: Reopen in Container* → select **Asset Manager - JDK 8 (Source)**
+   - Or install JDK 8, PostgreSQL, and RabbitMQ locally
+
+3. **Run the application**
+   ```bash
+   # Start the web module
+   ./mvnw -pl web spring-boot:run
+
+   # In a separate terminal, start the worker module
+   ./mvnw -pl worker spring-boot:run
+   ```
+
+4. **Open the app**
+
+   | Service | URL | Credentials |
+   |---------|-----|-------------|
+   | Web app | http://localhost:8080 | — |
+   | RabbitMQ management | http://localhost:15672 | `guest` / `guest` |
+
+### Exploring Modernization Branches
 
 ```bash
-git clone https://github.com/microsoft/ghcp-java-app-moderization-sample.git
-cd ghcp-java-app-moderization-sample
+# List all branches
+git branch -a
+
+# Switch to a specific branch (e.g., java-upgrade)
+git checkout java-upgrade
+
+# Compare changes between stages
+git diff main..assess
+git diff main..java-upgrade
+git diff java-upgrade..resolve-CVEs
 ```
 
-**Prerequisites**: 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/): Required for running the dev container.
-- An IDE with [dev container support](https://containers.dev/supporting) (VS Code, JetBrains, Visual Studio, etc.)
+---
 
-See [DEV-SETUP.md](DEV-SETUP.md) for detailed setup instructions. In short:
+## 📁 Solution Structure
 
-1. Open the project in a dev container (choose **JDK 8** for the original app)
-2. Run the application:
-
-```bash
-./mvnw -pl web spring-boot:run &
-./mvnw -pl worker spring-boot:run &
+```
+ghcp-java-app-moderization-sample/
+|── web/                           # Web application module
+│   ├── pom.xml
+│   ├── Dockerfile
+│   └── src/main/java/com/microsoft/migration/assets/
+│       ├── AssetsManagerApplication.java    # Entry point
+│       ├── config/                          # Configuration classes
+│       ├── controller/                      # MVC controllers
+│       ├── model/                           # Domain models
+│       └── service/                         # Business logic
+│
+├── worker/                        # Worker application module
+│   ├── pom.xml
+│   ├── Dockerfile
+│   └── src/main/java/com/microsoft/migration/assets/worker/
+│       ├── WorkerApplication.java           # Entry point
+│       ├── config/                          # Configuration classes
+│       ├── model/                           # Domain models
+│       └── service/                         # Processing services
+│
+├── infra/                         # Azure infrastructure (Bicep)
+│   ├── main.bicep
+│   ├── main.bicepparam
+│   ├── postgres/Dockerfile
+│   └── rabbitmq/Dockerfile
+│
+└── doc-media/                     # Documentation images
 ```
 
-3. Open http://localhost:8080
+---
 
-## App Modernization
+## 🌳 Branch Structure
 
-The following sections guide you through the process of modernizing the sample Java application `asset-manager` to Azure using GitHub Copilot app modernization.
+This repository uses a **branch-per-stage** approach to demonstrate the modernization journey:
 
-**Prerequisites**: 
-- A GitHub account with [GitHub Copilot](https://github.com/features/copilot) enabled. A Pro, Pro+, Business, or Enterprise plan is required.
-- One of the following IDEs:
-  - The latest version of [Visual Studio Code](https://code.visualstudio.com/). Must be version 1.101 or later.
-    - [GitHub Copilot in Visual Studio Code](https://code.visualstudio.com/docs/copilot/overview). For setup instructions, see [Set up GitHub Copilot in Visual Studio Code](https://code.visualstudio.com/docs/copilot/setup). Be sure to sign in to your GitHub account within Visual Studio Code.
-    - [GitHub Copilot app modernization](https://marketplace.visualstudio.com/items?itemName=vscjava.migrate-java-to-azure). Restart Visual Studio Code after installation.
-  - The latest version of [IntelliJ IDEA](https://www.jetbrains.com/idea/download). Must be version 2023.3 or later.
-    - [GitHub Copilot](https://plugins.jetbrains.com/plugin/17718-github-copilot). Must be version 1.5.59 or later. For more instructions, see [Set up GitHub Copilot in IntelliJ IDEA](https://docs.github.com/en/copilot/get-started/quickstart). Be sure to sign in to your GitHub account within IntelliJ IDEA.
-    - [GitHub Copilot app modernization](https://plugins.jetbrains.com/plugin/28791-github-copilot-app-modernization). Restart IntelliJ IDEA after installation. If you don't have GitHub Copilot installed, you can install GitHub Copilot app modernization directly.
-    - For more efficient use of Copilot in app modernization: in the IntelliJ IDEA settings, select the **Tools** > **GitHub Copilot** configuration window, and then select **Auto-approve** and **Trust MCP Tool Annotations**. For more information, see [Configure settings for GitHub Copilot app modernization to optimize the experience for IntelliJ](configure-settings-intellij.md).
-- [Java JDK](/java/openjdk/download) for both the source and target JDK versions.
-- [Maven](https://maven.apache.org/download.cgi) or [Gradle](https://gradle.org/install/) to build Java projects.
-- A Git-managed Java project using Maven or Gradle.
-- For Maven-based projects: access to the public Maven Central repository.
-- In the Visual Studio Code settings, make sure `chat.extensionTools.enabled` is set to `true`. This setting might be controlled by your organization.
+| Branch | Stage | Description |
+|--------|-------|-------------|
+| `main` | **Legacy Application** | Original Java 8 / Spring Boot 2.7.18 codebase with AWS S3 — starting point |
+| `assess` | **Assessment & Planning** | Assessment report capturing current state analysis, modernization targets, risks, and recommended action plan |
+| `java-upgrade` | **Framework Upgrade** | Incremental upgrade: Java 8 → 17 → 21, Spring Boot 2.7 → 3.2 → 3.3 with Jakarta EE migration |
+| `java-upgrade-unit-tests` | **Unit Testing** | Comprehensive unit tests for web and worker modules to validate post-upgrade behavior |
+| `resolve-CVEs` | **Security Scan** | Vulnerability assessment, CVE remediation, and dependency updates |
+| `migration-AWS-to-Azure` | **Cloud Migration** | Migrate from AWS S3 to Azure Blob Storage with Managed Identity authentication |
+| `containerized_app` | **Containerization** | Multi-stage Dockerfiles, Docker Compose, and Azure deployment infrastructure (Bicep) |
 
-> Note: If you're using Gradle, only the Gradle wrapper version 5+ is supported. The Kotlin Domain Specific Language (DSL) isn't supported.
->
-> The function `My Tasks` isn't supported yet for IntelliJ IDEA.
+### Branch Lineage
 
-### Install GitHub Copilot app modernization
-
-In VSCode, open the Extensions view from the Activity Bar, search for the `GitHub Copilot app modernization` extension in the marketplace. Click the Install button for the extension. After installation completes, you should see a notification in the bottom-right corner of VSCode confirming success.
-
-**Alternative: IntelliJ IDEA**
-Alternatively, you can use IntelliJ IDEA. Open **File** > **Settings** (or **IntelliJ IDEA** > **Preferences** on macOS), navigate to **Plugins** > **Marketplace**, search for `GitHub Copilot app modernization`, and click **Install**. Restart IntelliJ IDEA if prompted.
-
-### Assess Your Java Application
-
-The first step is to assess the sample Java application `asset-manager`. The assessment provides insights into the application's readiness for migration to Azure.
-
-1. Open VS Code with all the prerequisites installed for the asset manager by changing the directory to the `asset-manager` directory and running `code .` in that directory.
-1. Open the `GitHub Copilot app modernization` extension.
-1. In the **QUICKSTART** view, click the **Migrate to Azure** button to trigger app assessment.
-
-   ![Trigger Assessment](doc-media/trigger-assessment.png)
-
-1. Wait for the assessment to be completed and the report to be generated.
-1. Review the **Assessment Report**. Select the **Issues** tab to view the proposed solutions for the issues identified in the report.
-
-### Upgrade Runtime & Frameworks
-
-1. In the **Java Upgrade** table at the bottom of the **Issues** tab, click the **Run Task** button of the first entry **Java Version Upgrade**.
-
-    ![Java Upgrade](doc-media/java-upgrade.png)
-1. After clicking the **Run Task** button, the Copilot Chat panel will open with Agent Mode. The agent will check out a new branch and start upgrading the JDK version and Spring/Spring Boot framework. Click **Allow** for any requests from the agent.
-
-### Migrate to Azure Database for PostgreSQL Flexible Server using Predefined Tasks
-
-Then you can migrate the sample Java application `asset-manager` to Azure.
-
-> Note: If the Java upgrade was already completed, you can skip ahead and continue with the rest of the workshop.
-
-1. For this workshop, select **Migrate to Azure Database for PostgreSQL (Spring)** in the Solution list, then click **Run Task**.
-
-   ![Confirm Solution](doc-media/confirm-postgresql-solution.png)
-1. After clicking the **Run Task** button in the Assessment Report, the Copilot Chat panel will open with Agent Mode.
-1. The Copilot Agent will first analyze the project and generate a migration plan.
-1. After the plan is generated, Copilot Chat will stop with two generated files: **plan.md** and **progress.md**. If prompted, enter "Continue" or "Proceed" in the chat to confirm and execute the plan.
-1. When the code is migrated, the extension will prepare the **CVE Validation and Fixing** process. Click **Allow** to proceed.
-1. Review the proposed code changes and click **Keep** to apply them.
-
-### Migrate to Azure Blob Storage using Predefined Tasks
-
-1. Click the **Run Task** in the Assessment Report, on the right of the row `Storage Migration (AWS S3)` - `Migrate from AWS S3 to Azure Blob Storage`.
-1. The following steps are the same as the above PostgreSQL server migration.
-
-### Migrate to Azure Service Bus using Predefined Tasks
-
-1. Click the **Run Task** in the Assessment Report, on the right of the row `Messaging Service Migration (Spring AMQP RabbitMQ)` - `Migrate from RabbitMQ(AMQP) to Azure Service Bus`.
-1. The following steps are the same as the above PostgreSQL server migration.
-
-### Expose health endpoints using Custom Tasks
-
-In this section, you will use custom tasks to expose health endpoints for your applications instead of writing code yourself. The following steps demonstrate how to generate custom tasks based on external web links and proper prompts.
-
-> Note: Custom tasks are not supported for the IntelliJ IDEA plugin. If you are using IntelliJ IDEA, you can skip this section.
-
-1. Open the sidebar of `GITHUB COPILOT APP MODERNIZATION`. Click the `+` button in the **Tasks** view to create a custom task.
-
-   ![Create Formula From Source Control](doc-media/create-formula-from-source-control.png)
-1. In the opened tab, enter the **Task Name** and **Task Prompt** as shown below:
-   - **Task Name**: Expose health endpoint via Spring Boot Actuator
-   - **Task Prompt**: You are a Spring Boot developer assistant, follow the Spring Boot Actuator documentation to add basic health endpoints for Azure Container Apps deployment.
-1. Click the **Add References** button to add the Spring Boot Actuator official documentation as references.
-
-   ![Health endpoint task](doc-media/health-endpoint-task.png)
-1. In the popped-up quick-pick window, select **External links**. Then paste the following link: `https://docs.spring.io/spring-boot/reference/actuator/endpoints.html`. Click **Save** to create the task.
-1. Click the **Run** button to trigger the custom task.
-1. Follow the same steps as the predefined task to review and apply the changes.
-1. Review the proposed code changes and click **Keep** to apply them.
-
-### Containerize Applications
-
-Now that you have successfully migrated your Java application to use Azure services, the next step is to prepare it for cloud deployment by containerizing both the web and worker modules. In this section, you will use **Containerization Tasks** to containerize your migrated applications.
-> Note: If you encounter any issues with the previous migration step, you can skip ahead to the containerization step.
-
-1. Open the sidebar of `GITHUB COPILOT APP MODERNIZATION`. In **Tasks** view, click the **Run Task** button of **Java** -> **Containerization Tasks** -> **Containerize Application**.
-  
-    ![Run Containerize Application task](doc-media/containerization-run-task.png)
-
-1. A predefined prompt will be populated in the Copilot Chat panel with Agent Mode. Copilot Agent will start to analyze the workspace and to create a **containerization-plan.copiotmd** with the containerization plan.
-
-    ![Containerization prompt and plan](doc-media/containerization-plan.png)
-1. View the plan and collaborate with Copilot Agent as it follows the **Execution Steps** in the plan by clicking **Continue**/**Allow** in pop-up chat notifications to run commands. Some of the execution steps leverage agentic tools of **Container Assist**.
-
-    <!-- ![Containerization execution steps](doc-media/containerization-execution-steps.png) -->
-1. Copilot Agent will help generate Dockerfile, build Docker images and fix build errors if there are any. Click **Keep** to apply the generated code.
-
-### Deploy to Azure
-
-At this point, you have successfully migrated the sample Java application `asset-manager` to Azure Database for PostgreSQL (Spring), Azure Blob Storage, and Azure Service Bus, and exposed health endpoints via Spring Boot Actuator. Now, you can start the deployment to Azure.
-> Note: If you encounter any issues with the previous migration step, you can skip ahead to the deployment step.
-
-1. Open the sidebar of `GITHUB COPILOT APP MODERNIZATION`. In **Tasks** view, click the **Run Task** button of **Java** -> **Deployment Tasks** -> **Provision Infrastructure and Deploy to Azure**.
-
-    ![Run Deployment task](doc-media/deployment-run-task.png)
-1. A predefined prompt will be populated in the Copilot Chat panel with Agent Mode. The default hosting Azure service is Azure Container Apps.To change the hosting service to **Azure Kubernetes Service** (AKS), click on the prompt in the Copilot Chat panel and edit the last sentence of the prompt to **Hosting service: AKS**.
-
-    ![Deployment prompt](doc-media/deployment-prompt.png)
-1. Click ****Continue**/**Allow** if pop-up notifications to let Copilot Agent analyze the project and create a deployment plan in **plan.copilotmd** with Azure resources architecture, recommended Azure resources for project and security configurations, and execution steps for deployment.
-
-1. View the architecture diagram, resource configurations, and execution steps in the plan. Click **Keep** to save the plan and type in **Execute the plan** to start the deployment.
-
-    ![Deployment execute](doc-media/deployment-execute.png)
-1. When prompted, click **Continue**/**Allow** in chat notifications or type **y**/**yes** in terminal as Copilot Agent follows the plan and leverages agent tools to create and run provisioning and deployment scripts, fix potential errors, and finish the deployment. You can also check the deployment status in **progress.copilotmd**. **DO NOT interrupt** when provisioning or deployment scripts are running.
-
-    ![Deployment progress](doc-media/deployment-progress.png)
-
-> Note: If you encounter any issues with the deployment step, you can refer to the expected Copilot-generated deployment scripts in the `/.azure` folder to compare your deployment scripts and troubleshoot the problems.
-
-#### Clean up
-
-When no longer needed, delete all related Azure resources:
-
-```bash
-scripts/cleanup-azure-resources.sh -ResourceGroupName <your resource group name>
+```
+main (Java 8, Spring Boot 2.7, AWS S3)
+ ├── assess (assessment report & modernization plan)
+ └── java-upgrade (Java 21, Spring Boot 3.3.7)
+      ├── java-upgrade-unit-tests (+ comprehensive tests)
+      ├── resolve-CVEs (+ vulnerability fixes)
+      └── migration-AWS-to-Azure (AWS S3 → Azure Blob Storage)
+           └── containerized_app (+ Docker, Compose, Azure infra)
 ```
 
-If you deploy the app using GitHub Codespaces, delete the Codespaces environment by navigating to your forked repository in GitHub and selecting **Code** > **Codespaces** > **Delete**.
+### How to Use the Branches
+
+1. **Start with `main`**: Understand the legacy application
+2. **Review `assess`**: See the assessment report and modernization plan
+3. **Review `java-upgrade`**: See the incremental Java/Spring Boot upgrade path
+4. **Explore improvements**: `java-upgrade-unit-tests` and `resolve-CVEs` branch
+5. **Follow the cloud migration**: `migration-AWS-to-Azure` replaces AWS with Azure services
+6. **Review containerization**: `containerized_app` adds Docker, Compose, and Azure deployment infrastructure
+7. **Compare changes**: Use `git diff` to see what changed between stages
+   ```bash
+   git diff main..assess
+   git diff main..java-upgrade
+   git diff java-upgrade..migration-AWS-to-Azure
+   git diff migration-AWS-to-Azure..containerized_app
+   ```
+
+---
+
+## 📚 Modernization Guide
+
+This guide walks through each stage of modernizing the Assets Manager application using **GitHub Copilot App Modernization**. Each stage builds on the previous one.
+
+> **💡 Tip**: Work through these stages sequentially. Each stage has dependencies on the previous stages' outputs.
+
+---
+
+### 🔍 Stage 1: Assessment & Planning (`assess`)
+
+**Objective**: Analyze the current application architecture, identify modernization opportunities, and create a comprehensive upgrade plan.
+
+#### Step-by-Step Instructions
+
+**1.1 Open the Project**
+- Open the project on the `main` branch
+
+**1.2 Open the App Modernization App Modernization**
+- Open the GitHub Copilot App Modernization
+
+**1.3 Start the Assessment**
+- Select **"Start Assessment"** to begin the assessment workflow
+
+  ![Starting the assessment](doc-media/start_assessment.png)
+
+**1.4 Review the Assessment Report**
+- A comprehensive assessment report is generated, covering:
+  - Current state analysis (Java version, Spring Boot version, dependencies)
+  - Recommended target versions
+  - Potential breaking changes and blockers
+
+  ![Assessment report overview](doc-media/assessment_report1.png)
+
+**1.5 Review Detailed Findings**
+- Examine the detailed findings, including framework-specific recommendations and steps
+
+  ![Assessment report details](doc-media/assessment_report2.png)
+
+**Expected Outcome**: A clear understanding of the modernization scope, risks, and step-by-step plan before making any code changes.
+
+---
+
+### ⬆️ Stage 2: Java & Spring Boot Upgrade (`java-upgrade`)
+
+**Objective**: Upgrade Java 8 → 21 and Spring Boot 2.7 → 3.3 in incremental, compilable steps.
+
+#### Step-by-Step Instructions
+
+**2.1 Initiate the Upgrade Process**
+- Open the GitHub Copilot App Modernization
+- Click **Upgrade Java Runtime & Frameworks**
+
+  ![GitHub Copilot App Modernization — Quickstart panel](doc-media/ghcp-app-modernization.png)
+
+- The agent analyzes the repository — POM files, source code, dependency tree — and proposes target versions
+
+**2.2 Review the Upgrade Plan**
+- GitHub Copilot App Modernization generates a step-by-step upgrade plan and saves it to `.github/java-upgrade/`:
+
+  ```
+  plan.md       # Full upgrade plan with steps, verification commands, and challenges
+  progress.md   # Step-by-step execution log
+  summary.md    # Final results and post-upgrade report
+  ```
+
+**2.3 Approve and Execute the Plan**
+- Review, modify if needed and approve the plan
+- The agent executes each step automatically — updating POM files, migrating imports, recompiling, running tests, and committing changes at every milestone
+- Each step is verified before proceeding to the next
+
+**2.4 Review the Summary**
+- Once all steps complete and final validation passes, a summary is created at `.github/java-upgrade/summary.md`
+- The summary includes upgrade results, technology stack diff, commit log, CVE scan, and challenges encountered
+
+**2.7 Verify the Upgrade**
+- Run the following command to confirm the project compiles:
+
+  ```bash
+  ./mvnw clean compile
+  ```
+
+**Expected Outcome**: Project compiles with Java 21 and Spring Boot 3.3.7, all `javax` imports replaced with `jakarta`.
+
+---
+
+### 🧪 Stage 3: Unit Testing (`java-upgrade-unit-tests`)
+
+**Objective**: Add comprehensive unit tests to validate application behavior post-upgrade and establish a safety net for future changes.
+
+#### Step-by-Step Instructions
+
+**3.1 Generate Unit Tests**
+- After the Java 21 / Spring Boot 3.3.7 upgrade completes, GitHub Copilot App Modernization presents a **Proceed** option
+- Click **Generate unit tests** to automatically create tests for classes with low or no coverage
+
+  ![Proceed from upgrade — Generate unit tests](doc-media/proceed.png)
+
+**3.2 Review the Coverage Analysis**
+- A coverage analysis identifies classes with no or insufficient test coverage:
+
+  | Module | Source Files | Test Files | Gap |
+  |--------|-------------|------------|-----|
+  | **web** | 14 classes | 0 test files | No coverage at all |
+  | **worker** | 10 classes | 2 test files | Partial coverage |
+
+**3.3 Review Generated Tests**
+- The agent generates JUnit 5 + Mockito tests targeting the most important business-logic classes:
+
+**3.4 Verify the Tests**
+- Run the test suite and confirm all tests pass:
+
+  ```bash
+  ./mvnw clean test
+  ```
+
+  | Metric | Before | After |
+  |--------|--------|-------|
+  | Test files | 2 | 6 |
+  | Total tests | 16 | 47 |
+  | Pass rate | 100% (16/16) | 100% (47/47) |
+  | Web module tests | 0 | 18 |
+  | Worker module tests | 16 | 29 |
+
+**Expected Outcome**: All tests pass, covering controllers, services, and message processors across both modules.
+
+---
+
+### 🔒 Stage 4: CVE Check & Vulnerability Remediation (`resolve-CVEs`)
+
+**Objective**: Identify and fix security vulnerabilities in project dependencies.
+
+#### Step-by-Step Instructions
+
+**4.1 Trigger CVE Scan**
+- Open **GitHub Copilot App Modernization** 
+- Click **Scan and Resolve CVEs** to trigger a scan of all project dependencies
+
+  ![GHCP App Modernization — Scan and Resolve CVEs](doc-media/ghcp-app-mod-cves.png)
+
+- The scan analyzes:
+  - Direct dependencies declared in each module's `pom.xml`
+  - Transitive dependencies resolved through the Spring Boot BOM
+  - All compile and runtime scope artifacts
+
+**4.2 Review the CVE Report**
+- The scan identified **16 known vulnerabilities** across **4 dependencies**:
+
+  ![GHCP App Modernization — Scan and Resolve CVEs](doc-media/validate_cves.png)
+
+  | Dependency | Version | CVEs | Highest Severity |
+  |------------|---------|------|------------------|
+  | `org.apache.tomcat.embed:tomcat-embed-core` | 10.1.34 | 13 | CRITICAL |
+  | `com.fasterxml.jackson.core:jackson-core` | 2.17.3 | 1 | HIGH |
+  | `org.springframework.boot:spring-boot` | 3.3.7 | 1 | HIGH |
+  | `org.postgresql:postgresql` | 42.7.4 | 1 | HIGH |
+
+**4.3 Apply CVE Fixes**
+- GitHub Copilot App Modernization resolves all CVEs by upgrading dependency versions in the parent `pom.xml`:
+
+  | Change | Before | After | Method |
+  |--------|--------|-------|--------|
+  | Spring Boot parent | 3.3.7 | **3.3.13** | Parent POM version bump |
+  | Tomcat | 10.1.34 | **10.1.52** | `<tomcat.version>` override |
+  | Jackson | 2.17.3 | **2.18.6** | `<jackson-bom.version>` override |
+  | Netty | 4.1.122.Final | **4.1.124.Final** | `<netty.version>` override |
+  | PostgreSQL | 42.7.4 | **42.7.7** | Resolved via Spring Boot 3.3.13 BOM |
+
+  ![GHCP App Modernization — Scan and Resolve CVEs](doc-media/patched_cves.png)
+
+**4.4 Confirm Resolution**
+- Ask Copilot to generate a full vulnerability assessment report summarizing the CVEs found, their severities, and the fixes applied.
+- After applying the changes, a re-scan confirms **0 known vulnerabilities remaining**
+
+**4.5 Verify the Fix**
+- Run the following command to confirm everything compiles and passes:
+
+  ```bash
+  ./mvnw clean verify
+  ```
+
+**Expected Outcome**: No critical or high-severity CVEs in dependencies. Assessment report documents all findings and remediations.
+
+---
+
+### ☁️ Stage 5: AWS to Azure Migration (`migration-AWS-to-Azure`)
+
+**Objective**: Replace AWS S3 dependencies with Azure Blob Storage, using Azure Identity (Managed Identity / `DefaultAzureCredential`) for authentication.
+
+#### Step-by-Step Instructions
+
+**5.1 Review Cloud Readiness Tasks**
+- In the assessment of the project, check the **Cloud readiness tasks**
+- The assessment identifies AWS-specific dependencies, configurations, and code patterns that need to be migrated to Azure equivalents
+
+  ![GHCP App Modernization — AWS to Azure Migration](doc-media/modernize_aws_azure.png)
+
+**5.2 Execute the task**
+
+  ![Migration task](doc-media/migrate_s3.png)
+
+**5.4 Review the Migration Summary**
+- Review the migration impact:
+
+  ![Migration task](doc-media/migrate_s3_done.png)
+
+**5.5 Verify the Migration**
+- **Local testing** (dev profile — uses local file storage, no Azure account needed):
+
+  ```bash
+  SPRING_PROFILES_ACTIVE=dev ./mvnw -pl web spring-boot:run
+  ```
+
+- **Azure testing** — requires additional setup before running:
+    Update `application.properties` in both `web` and `worker` modules:
+
+     ```properties
+     azure.storage.account-name=<your-storage-account-name>
+     azure.storage.blob.container=<your-container-name>
+     ```
+
+     Or pass them as environment variables:
+
+     ```bash
+     AZURE_STORAGE_ACCOUNT_NAME=<your-storage-account-name> \
+     AZURE_STORAGE_BLOB_CONTAINER=<your-container-name> \
+     ./mvnw -pl web spring-boot:run
+     ```
+
+**Expected Outcome**: All AWS references removed. Application uses Azure Blob Storage with `DefaultAzureCredential`. Local `dev` profile provides a file-system fallback for development without any Azure setup.
+
+---
+
+### 🐳 Stage 6: Containerization & Azure Deployment (`containerized_app`)
+
+**Objective**: Package the application into optimized Docker containers and prepare Azure deployment infrastructure.
+
+#### Step-by-Step Instructions
+
+**6.1 Start Containerization**
+- In the assessment of the project, check the **Cloud readiness tasks**
+- Execute the Containerization task. The assessment includes a **containerization task** for preparing the application for Docker and cloud deployment
+
+  ![GHCP App Modernization — Containerize](doc-media/assess_app_containerized.png)
+
+
+**6.2 Review the Containerization Plan**
+- The agent generates a containerization plan covering Dockerfiles, Docker Compose, and Azure infrastructure
+
+  ![Containerization plan](doc-media/containerize_step.png)
+
+**6.3 Execute the Plan**
+- After reviewing and approving the plan, the agent executes each step:
+  - Creates multi-stage Dockerfiles for `web` and `worker`
+  - Generates `docker-compose.yml` for the full local stack
+  - Creates Bicep templates for Azure Container Apps
+  - Generates `azure.yaml` for the Azure Developer CLI
+
+- Key artifacts generated:
+  - **`web/Dockerfile`** — Multi-stage build with Eclipse Temurin 21, non-root user, health check
+  - **`worker/Dockerfile`** — Multi-stage build for background processing
+  - **`docker-compose.yml`** — PostgreSQL, RabbitMQ, Web, and Worker services
+  - **`infra/main.bicep`** — Azure Container Apps environment, registry, and app definitions
+  - **`azure.yaml`** — Azure Developer CLI deployment configuration
+
+**6.4 Build and Test Locally**
+- Build and run with Docker Compose:
+
+  ```bash
+  # Build images
+  docker build -t assets-manager-web:latest -f web/Dockerfile .
+  docker build -t assets-manager-worker:latest -f worker/Dockerfile .
+
+  # Start all services
+  docker-compose up -d
+
+  # View logs
+  docker-compose logs -f
+
+  # Stop
+  docker-compose down
+  ```
+
+- Verify the services are running:
+
+  | Service | URL | Credentials |
+  |---------|-----|-------------|
+  | Web UI | http://localhost:8080 | — |
+  | RabbitMQ Management | http://localhost:15672 | `guest` / `guest` |
+  | PostgreSQL | localhost:5432 | `postgres` / `postgres` |
+
+**6.5 Deploy to Azure**
+- Deploy using the Azure Developer CLI:
+
+  ```bash
+  # Login
+  azd auth login
+
+  # Deploy everything (infrastructure + containers)
+  azd up
+  ```
+
+**Expected Outcome**: Application deployed to Azure Container Apps with `azd up`.
+
+
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! This repository is meant to be a learning resource for the community.
+
+1. **Fork** the repository
+2. **Create a feature branch** (`git checkout -b feature/improvement`)
+3. **Make your changes** and commit
+4. **Push** to your branch and **open a Pull Request**
+
+
+
+## 📄 Support & Resources
+
+- [Spring Boot Migration Guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide)
+- [Jakarta EE Migration](https://jakarta.ee/resources/javax-to-jakarta/)
+- [Azure SDK for Java](https://learn.microsoft.com/java/azure/)
+- [Azure Container Apps Documentation](https://learn.microsoft.com/azure/container-apps/)
+- [GitHub Copilot Documentation](https://docs.github.com/copilot)
+- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/)
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
