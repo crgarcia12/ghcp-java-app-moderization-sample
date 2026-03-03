@@ -289,11 +289,24 @@ The `S3StorageItem` model class and references throughout use "S3" in naming. Wh
     <artifactId>spring-boot-starter-amqp</artifactId>
 </dependency>
 
-<!-- Add -->
+<!-- Add (version managed by Spring Cloud Azure BOM) -->
 <dependency>
     <groupId>com.azure.spring</groupId>
     <artifactId>spring-cloud-azure-starter-servicebus-jms</artifactId>
 </dependency>
+
+<!-- Add BOM to dependencyManagement -->
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-dependencies</artifactId>
+            <version>${spring-cloud-azure.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
 ```
 
 ### 5.2 — Configuration Changes
@@ -420,7 +433,7 @@ The AWS access key property name differs between modules:
 - Web: `aws.accessKey`
 - Worker: `aws.accessKeyId`
 
-This inconsistency should be resolved during migration.
+This inconsistency should be resolved during migration. The worker module's `aws.accessKeyId` follows the AWS SDK v2 naming conventions and is the correct form. However, since both will be removed in favor of Azure Managed Identity, this is a moot point post-migration.
 
 ---
 
